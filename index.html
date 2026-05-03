@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sravya Yarlagadda</title>
+    <style>
+        @font-face {
+            font-family: 'Barlow';
+            font-style: normal;
+            font-weight: 300;
+            font-display: swap;
+            src: url(https://fonts.gstatic.com/s/barlow/v13/7cHqv4kjgoGqM7E3p-ks6Fostz0rdom9.woff2) format('woff2');
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-weight: 300;
+            color: #111;
+            font-size: 17px;
+            line-height: 1.6;
+            background-color: #fff;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding-top: 40px;
+        }
+
+        .profile-image {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 400;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 17px;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+
+        /* Links */
+        .links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        a {
+            color: #007bff;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+
+        a:hover {
+            opacity: 0.7;
+        }
+
+        .social-links a {
+            color: #666;
+            font-size: 14px;
+            text-decoration: underline;
+        }
+
+        /* Dividers */
+        hr {
+            border: none;
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 60px 0;
+        }
+
+        /* Sections */
+        section {
+            margin-bottom: 60px;
+        }
+
+        h2 {
+            font-size: 20px;
+            font-weight: 400;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #111;
+        }
+
+        /* Cards/Items */
+        .item {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 20px;
+            margin-bottom: 40px;
+            align-items: start;
+        }
+
+        .item-image {
+            width: 120px;
+            height: 80px;
+            object-fit: cover;
+            background-color: #f5f5f5;
+        }
+
+        .item-content h3 {
+            font-size: 16px;
+            font-weight: 400;
+            margin-bottom: 5px;
+        }
+
+        .item-content p {
+            font-size: 15px;
+            color: #666;
+            margin: 5px 0;
+        }
+
+        .item-date {
+            font-size: 14px;
+            color: #999;
+            margin-top: 10px;
+        }
+
+        /* Text content */
+        p {
+            margin-bottom: 15px;
+            line-height: 1.8;
+        }
+
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 20px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container {
+                padding: 30px 15px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            h2 {
+                font-size: 18px;
+            }
+
+            .item {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .item-image {
+                width: 100%;
+                height: auto;
+                max-height: 200px;
+            }
+
+            .links {
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img src="images/sy.png" alt="Profile" class="profile-image">
+            <h1>Your Name</h1>
+            <p class="subtitle">Brief description of who you are and what you do. Keep it concise and compelling.</p>
+            <div class="links social-links">
+                <a href="mailto:sravyayarlagadda07@gmail.com">Email</a>
+                <a href="https://twitter.com" target="_blank">Twitter</a>
+                <a href="https://github.com" target="_blank">GitHub</a>
+            </div>
+        </header>
+
+        <hr>
+
+        <!-- About Section -->
+        <section>
+            <h2>About</h2>
+            <p>This is a minimalist portfolio website. Replace this text with your actual content. The design emphasizes substance over decoration—clean, fast, and content-first.</p>
+            <p>Key principles: no frameworks, lightweight, responsive, and focused on readability.</p>
+        </section>
+
+        <hr>
+
+        <!-- Projects Section -->
+        <section>
+            <h2>Projects</h2>
+
+            <div class="item">
+                <img src="https://via.placeholder.com/120x80" alt="Project" class="item-image">
+                <div class="item-content">
+                    <h3><a href="#">Project Title</a></h3>
+                    <p>Brief description of the project and what makes it interesting.</p>
+                    <span class="item-date">2026</span>
+                </div>
+            </div>
+
+            <div class="item">
+                <img src="https://via.placeholder.com/120x80" alt="Project" class="item-image">
+                <div class="item-content">
+                    <h3><a href="#">Another Project</a></h3>
+                    <p>Detailed explanation of the work and its impact.</p>
+                    <span class="item-date">2025</span>
+                </div>
+            </div>
+        </section>
+
+        <hr>
+
+        <!-- Publications/Writing -->
+        <section>
+            <h2>Writing</h2>
+
+            <div class="item">
+                <div class="item-content">
+                    <h3><a href="#">Article Title</a></h3>
+                    <p>A brief summary of the article or blog post.</p>
+                    <span class="item-date">May 2026</span>
+                </div>
+            </div>
+
+            <div class="item">
+                <div class="item-content">
+                    <h3><a href="#">Another Article</a></h3>
+                    <p>More insights and thoughts on relevant topics.</p>
+                    <span class="item-date">April 2026</span>
+                </div>
+            </div>
+        </section>
+
+        <hr>
+
+        <!-- Footer -->
+        <footer style="text-align: center; margin-top: 80px; padding-bottom: 40px;">
+            <p style="color: #999; font-size: 14px;">Made with simplicity. No frameworks.</p>
+        </footer>
+    </div>
+</body>
+</html>
