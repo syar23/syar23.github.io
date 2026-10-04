@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="A jigsaw puzzle where every piece keeps playing its part of a video. Load your own clip or solve the built-in sample reel.">
+<title>Moving Pieces</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a craft cutting mat fills the screen; a slim toolbar sits on top, a mono status strip below. One committed look (dark mat) in every theme. */
+:root {
+  --mat: #1d4639;
+  --mat-deep: #143429;
+  --rule: #2c5c4c;
+  --ink: #eef3ea;
+  --muted: #a3bcb0;
+  --accent: #ffb547;
+  --accent-ink: #2a1a00;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--mat-deep);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--rule);
+}
+h1 {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.45rem;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+h1 svg { flex: none; }
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+button, .file, select {
+  font: 600 0.88rem var(--body);
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  line-height: 1.2;
+}
+select { padding-right: 10px; background: var(--mat-deep); }
+button:hover, .file:hover, select:hover { border-color: var(--muted); }
+button:focus-visible, select:focus-visible, .file:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--rule); }
+.file { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.file:hover { border-color: var(--ink); }
+.file input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+label.pick { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
+.hint { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 0.85rem; text-wrap: balance; }
+.board { position: relative; flex: 1; min-height: 320px; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+canvas.dragging { cursor: grabbing; }
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--rule);
+  font: 500 0.75rem var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.status b { color: var(--ink); font-weight: 500; }
+.status .src { margin-left: auto; text-transform: none; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }
+.win {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(340px, calc(100% - 32px));
+  background: var(--mat-deep);
+  border: 1px solid var(--accent);
+  border-radius: 14px;
+  padding: 22px;
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.45);
+}
+.win h2 { margin: 0; font: 800 1.9rem var(--display); letter-spacing: -0.02em; color: var(--accent); }
+.win p { margin: 0; color: var(--ink); line-height: 1.45; }
+.win .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.win .primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.toast {
+  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+  background: var(--ink); color: var(--mat-deep); padding: 9px 14px; border-radius: 8px;
+  font-size: 0.85rem; width: max-content; max-width: calc(100% - 32px);
+}
+@media (max-width: 560px) {
+  .tools { margin-left: 0; }
+  .status .src { display: none; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+.home { color: var(--muted); font-size: 0.85rem; text-decoration: none; }
+.home:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="#ffb547" d="M3 3h7a2.5 2.5 0 1 1 4 0h7v7a2.5 2.5 0 1 0 0 4v7h-7a2.5 2.5 0 1 1-4 0H3v-7a2.5 2.5 0 1 0 0-4z"/><path fill="#143429" d="M9 8.5v7l6-3.5z"/></svg>
+    Moving Pieces
+  </h1>
+  <div class="tools">
+    <label class="file">Choose video<input id="file" type="file" accept="video/*"></label>
+    <label class="pick" for="count">Pieces
+      <select id="count">
+        <option value="6">6</option>
+        <option value="12">12</option>
+        <option value="24" selected>24</option>
+        <option value="48">48</option>
+        <option value="96">96</option>
+        <option value="150">150</option>
+      </select>
+    </label>
+    <button id="shuffle" type="button">Shuffle</button>
+    <button id="ghost" type="button" aria-pressed="false">Ghost image</button>
+    <button id="play" type="button">Pause</button>
+    <button id="sound" type="button" hidden>Sound off</button>
+  </div>
+  <a class="home" href="../">&larr; Sravya Yarlagadda</a>
+  <p class="hint">Drag pieces into the dashed frame. Matching edges snap together, and every piece keeps playing while you build. You can also drop a video file onto the mat.</p>
+</header>
+
+<main class="board" id="board">
+  <canvas id="cv" aria-label="Jigsaw puzzle board"></canvas>
+  <div class="win" id="win" hidden>
+    <h2>Solved</h2>
+    <p id="winText"></p>
+    <div class="row">
+      <button id="again" class="primary" type="button">Shuffle again</button>
+      <button id="watch" type="button">Keep watching</button>
+    </div>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+</main>
+
+<footer class="status">
+  <span><b id="sPieces">24</b> pieces</span>
+  <span><b id="sPlaced">0</b> placed</span>
+  <span><b id="sTime">00:00</b></span>
+  <span><b id="sMoves">0</b> moves</span>
+  <span>Best <b id="sBest">--:--</b></span>
+  <span class="src" id="sSrc">Sample reel (built-in animation)</span>
+</footer>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const hitCtx = document.createElement('canvas').getContext('2d');
+  const $ = id => document.getElementById(id);
+
+  // ---------- Sources ----------
+  const demoCv = document.createElement('canvas');
+  demoCv.width = 960; demoCv.height = 540;
+  const dctx = demoCv.getContext('2d');
+  let demoT = 0;
+  let src = { el: demoCv, w: 960, h: 540, video: false, name: 'Sample reel (built-in animation)' };
+  let playing = true;
+  let objectUrl = null;
+
+  function drawDemo(t) {
+    const W = 960, H = 540, g = dctx;
+    const sky = g.createLinearGradient(0, 0, 0, 360);
+    sky.addColorStop(0, `hsl(${215 + 25 * Math.sin(t / 9)} 55% 30%)`);
+    sky.addColorStop(0.7, `hsl(${330 + 15 * Math.sin(t / 7)} 45% 55%)`);
+    sky.addColorStop(1, 'hsl(30 90% 68%)');
+    g.fillStyle = sky; g.fillRect(0, 0, W, 360);
+    // sun
+    const sx = 480 + 320 * Math.sin(t / 12), sy = 250 - 40 * Math.cos(t / 12);
+    const glow = g.createRadialGradient(sx, sy, 10, sx, sy, 170);
+    glow.addColorStop(0, 'rgba(255,230,160,.9)'); glow.addColorStop(1, 'rgba(255,200,120,0)');
+    g.fillStyle = glow; g.fillRect(sx - 170, sy - 170, 340, 340);
+    g.fillStyle = '#ffe9b0'; g.beginPath(); g.arc(sx, sy, 52, 0, Math.PI * 2); g.fill();
+    // mountains
+    g.fillStyle = '#5b3d63';
+    g.beginPath(); g.moveTo(0, 360);
+    [[0,250],[120,190],[230,260],[360,170],[470,250],[560,215],[690,280],[800,200],[960,270],[960,360]].forEach(p => g.lineTo(p[0], p[1]));
+    g.fill();
+    g.fillStyle = '#3a2747';
+    g.beginPath(); g.moveTo(0, 360);
+    [[0,300],[90,280],[200,320],[330,270],[440,320],[600,290],[720,330],[860,295],[960,320],[960,360]].forEach(p => g.lineTo(p[0], p[1]));
+    g.fill();
+    // birds
+    g.strokeStyle = '#2a1d33'; g.lineWidth = 3; g.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const bx = ((t * (30 + i * 7) + i * 260) % 1100) - 70;
+      const by = 90 + i * 28 + 10 * Math.sin(t * 2 + i);
+      const f = 8 * Math.sin(t * 8 + i);
+      g.beginPath(); g.moveTo(bx - 14, by - f); g.quadraticCurveTo(bx - 6, by - 4, bx, by); g.quadraticCurveTo(bx + 6, by - 4, bx + 14, by - f); g.stroke();
+    }
+    // sea bands
+    const seas = ['#1e6f86', '#185a73', '#12465d', '#0c3349'];
+    seas.forEach((c, i) => {
+      const base = 360 + i * 45;
+      g.fillStyle = c; g.beginPath(); g.moveTo(0, H);
+      for (let x = 0; x <= W; x += 20) g.lineTo(x, base + 8 * Math.sin(x / (70 + i * 25) + t * (1.2 + i * 0.4)));
+      g.lineTo(W, H); g.fill();
+      if (i === 0) {
+        // sun glint
+        g.fillStyle = 'rgba(255,225,170,.35)';
+        for (let k = 0; k < 6; k++) g.fillRect(sx - 40 + 12 * Math.sin(t * 3 + k), base + 12 + k * 7, 80 - k * 10, 2);
+      }
+    });
+    // boat
+    const bx = ((t * 45) % 1160) - 100;
+    const by = 398 + 6 * Math.sin(bx / 70 + t * 1.6);
+    g.save(); g.translate(bx, by); g.rotate(0.05 * Math.sin(t * 1.6));
+    g.fillStyle = '#7b2e1f'; g.beginPath(); g.moveTo(-50, 0); g.lineTo(50, 0); g.lineTo(36, 18); g.lineTo(-36, 18); g.fill();
+    g.fillStyle = '#f4ecdc'; g.beginPath(); g.moveTo(-2, -4); g.lineTo(-2, -90); g.lineTo(40, -4); g.fill();
+    g.fillStyle = '#e2553a'; g.beginPath(); g.moveTo(-6, -4); g.lineTo(-6, -70); g.lineTo(-40, -4); g.fill();
+    g.restore();
+    // timecode, like a camera's burn-in
+    const fr = Math.floor(t * 24);
+    const tc = [Math.floor(fr / 86400), Math.floor(fr / 1440) % 60, Math.floor(fr / 24) % 60, fr % 24].map(n => String(n).padStart(2, '0')).join(':');
+    g.font = '500 22px "IBM Plex Mono", monospace';
+    g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(674, 492, 270, 34);
+    g.fillStyle = '#fff'; g.fillText('REEL 01  ' + tc, 684, 517);
+    g.font = '800 34px "Bricolage Grotesque", sans-serif';
+    g.fillStyle = 'rgba(255,255,255,.9)'; g.fillText('Harbour at dusk', 28, 54);
+  }
+
+  // ---------- Puzzle state ----------
+  const W0 = 1000;
+  let H0 = 562.5;
+  let N = 24, cols = 6, rows = 4, pw = 0, ph = 0;
+  let pieces = [], groups = [];
+  let moves = 0, startAt = 0, elapsed = 0, running = false, done = false, ghost = false;
+  let V = { s: 1, ox: 0, oy: 0, cw: 0, ch: 0, dpr: 1 };
+  let drag = null;
+  const SEG = [[[.40,0],[.44,.03],[.42,.08]],[[.38,.15],[.37,.26],[.50,.26]],[[.63,.26],[.62,.15],[.58,.08]],[[.56,.03],[.60,0],[.64,0]]];
+
+  function edgeTo(p, ax, ay, bx, by, sign) {
+    if (!sign) { p.lineTo(bx, by); return; }
+    const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy);
+    const nx = dy / L, ny = -dx / L;
+    const P = (t, h) => [ax + dx * t + nx * h * L * sign, ay + dy * t + ny * h * L * sign];
+    p.lineTo(...P(.36, 0));
+    for (const [a, b, c] of SEG) p.bezierCurveTo(...P(...a), ...P(...b), ...P(...c));
+    p.lineTo(bx, by);
+  }
+  function piecePath(e) {
+    const p = new Path2D();
+    p.moveTo(0, 0);
+    edgeTo(p, 0, 0, pw, 0, e[0]);
+    edgeTo(p, pw, 0, pw, ph, e[1]);
+    edgeTo(p, pw, ph, 0, ph, e[2]);
+    edgeTo(p, 0, ph, 0, 0, e[3]);
+    p.closePath();
+    return p;
+  }
+
+  function gridFor(n) {
+    // Pick the grid closest to n pieces whose cells are closest to square.
+    const a = W0 / H0;
+    let best = null;
+    for (let r = 2; r <= 20; r++) for (let c = 2; c <= 30; c++) {
+      const score = Math.abs(c * r - n) / n + 0.5 * Math.abs(Math.log((c / r) / a));
+      if (!best || score < best[0]) best = [score, c, r];
+    }
+    return [best[1], best[2]];
+  }
+
+  function build(saved) {
+    [cols, rows] = saved ? [saved.cols, saved.rows] : gridFor(N);
+    pw = W0 / cols; ph = H0 / rows;
+    const rnd = () => Math.random() < 0.5 ? 1 : -1;
+    const hE = [], vE = [];
+    for (let r = 0; r < rows; r++) { hE.push([]); vE.push([]); for (let c = 0; c < cols; c++) { hE[r].push(rnd()); vE[r].push(rnd()); } }
+    pieces = []; groups = [];
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const i = r * cols + c;
+      const e = saved ? saved.edges[i] : [
+        r === 0 ? 0 : -hE[r - 1][c],
+        c === cols - 1 ? 0 : vE[r][c],
+        r === rows - 1 ? 0 : hE[r][c],
+        c === 0 ? 0 : -vE[r][c - 1],
+      ];
+      const p = { i, c, r, e, x: 0, y: 0, g: null, path: piecePath(e) };
+      pieces.push(p);
+    }
+    if (saved) {
+      const gs = saved.groups.map(lk => ({ pieces: [], locked: lk }));
+      pieces.forEach((p, i) => { p.x = saved.pos[i][0]; p.y = saved.pos[i][1]; p.g = gs[saved.gi[i]]; p.g.pieces.push(p); });
+      groups = saved.order.map(k => gs[k]);
+      moves = saved.moves; elapsed = saved.elapsed; running = false; done = groups.every(g => g.locked);
+    } else {
+      pieces.forEach(p => { p.g = { pieces: [p], locked: false }; groups.push(p.g); });
+      // shuffle draw order
+      for (let k = groups.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [groups[k], groups[j]] = [groups[j], groups[k]]; }
+      scatter();
+      moves = 0; elapsed = 0; running = false; done = false;
+    }
+    $('win').hidden = true;
+    $('sPieces').textContent = pieces.length;
+    updateStatus();
+  }
+
+  function boardBox() {
+    return { x0: -V.ox / V.s, y0: -V.oy / V.s, x1: (V.cw - V.ox) / V.s, y1: (V.ch - V.oy) / V.s };
+  }
+  function scatter() {
+    // Spread pieces over the mat outside the frame: each piece takes the candidate spot
+    // farthest from the pieces already placed.
+    const b = boardBox(), m = Math.min(pw, ph) * 0.3;
+    const spanX = Math.max(1, b.x1 - b.x0 - pw - 2 * m), spanY = Math.max(1, b.y1 - b.y0 - ph - 2 * m);
+    const placed = [];
+    for (const p of pieces) {
+      let best = null;
+      for (let k = 0; k < 80; k++) {
+        const x = b.x0 + m + Math.random() * spanX, y = b.y0 + m + Math.random() * spanY;
+        const inFrame = x + pw + m > 0 && x - m < W0 && y + ph + m > 0 && y - m < H0;
+        let d = Infinity;
+        for (const [qx, qy] of placed) d = Math.min(d, Math.hypot((qx - x) / pw, (qy - y) / ph));
+        const score = (inFrame ? -1000 : 0) + Math.min(d, 1000);
+        if (!best || score > best[0]) best = [score, x, y];
+      }
+      p.x = best[1]; p.y = best[2];
+      placed.push([p.x, p.y]);
+    }
+  }
+
+  function clampGroups() {
+    const b = boardBox();
+    for (const g of groups) {
+      if (g.locked) continue;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const p of g.pieces) { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x + pw); maxY = Math.max(maxY, p.y + ph); }
+      let dx = 0, dy = 0;
+      if (maxX > b.x1) dx = b.x1 - maxX; if (minX + dx < b.x0) dx = b.x0 - minX;
+      if (maxY > b.y1) dy = b.y1 - maxY; if (minY + dy < b.y0) dy = b.y0 - minY;
+      if (dx || dy) shift(g, dx, dy);
+    }
+  }
+
+  function shift(g, dx, dy) { for (const p of g.pieces) { p.x += dx; p.y += dy; } }
+  function merge(a, b) {
+    for (const p of b.pieces) { p.g = a; a.pieces.push(p); }
+    a.locked = a.locked || b.locked;
+    groups.splice(groups.indexOf(b), 1);
+  }
+
+  function drop(g) {
+    const thr = Math.min(pw, ph) * 0.22;
+    let changed = true, snapped = false;
+    while (changed) {
+      changed = false;
+      if (!g.locked) {
+        for (const p of g.pieces) {
+          const dx = p.c * pw - p.x, dy = p.r * ph - p.y;
+          if (Math.hypot(dx, dy) < thr) { shift(g, dx, dy); g.locked = true; changed = snapped = true; break; }
+        }
+      }
+      outer: for (const p of g.pieces) {
+        for (const [dc, dr] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+          const c = p.c + dc, r = p.r + dr;
+          if (c < 0 || r < 0 || c >= cols || r >= rows) continue;
+          const q = pieces[r * cols + c];
+          if (q.g === g) continue;
+          const dx = q.x - dc * pw - p.x, dy = q.y - dr * ph - p.y;
+          if (Math.hypot(dx, dy) < thr) {
+            const other = q.g;
+            if (g.locked && !other.locked) shift(other, -dx, -dy); else shift(g, dx, dy);
+            merge(g, other);
+            changed = snapped = true;
+            break outer;
+          }
+        }
+      }
+    }
+    return snapped;
+  }
+
+  // ---------- Layout ----------
+  let matCache = null;
+  function layout() {
+    const r = cv.getBoundingClientRect();
+    V.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    V.cw = r.width; V.ch = r.height;
+    cv.width = Math.round(r.width * V.dpr); cv.height = Math.round(r.height * V.dpr);
+    const narrow = V.cw < 600;
+    V.s = Math.min(V.cw * (narrow ? 0.8 : 0.5) / W0, V.ch * (narrow ? 0.42 : 0.55) / H0);
+    V.ox = (V.cw - W0 * V.s) / 2; V.oy = (V.ch - H0 * V.s) / 2;
+    matCache = drawMat();
+  }
+  function drawMat() {
+    const c = document.createElement('canvas');
+    c.width = cv.width; c.height = cv.height;
+    const g = c.getContext('2d');
+    g.scale(V.dpr, V.dpr);
+    g.fillStyle = '#1d4639'; g.fillRect(0, 0, V.cw, V.ch);
+    const step = 20;
+    for (let x = 0, k = 0; x <= V.cw; x += step, k++) {
+      g.fillStyle = k % 5 === 0 ? 'rgba(220,245,230,.13)' : 'rgba(220,245,230,.05)';
+      g.fillRect(x, 0, 1, V.ch);
+      if (k % 5 === 0 && k) { g.fillStyle = 'rgba(220,245,230,.35)'; g.font = '500 9px "IBM Plex Mono", monospace'; g.fillText(k / 5, x + 3, 11); }
+    }
+    for (let y = 0, k = 0; y <= V.ch; y += step, k++) {
+      g.fillStyle = k % 5 === 0 ? 'rgba(220,245,230,.13)' : 'rgba(220,245,230,.05)';
+      g.fillRect(0, y, V.cw, 1);
+      if (k % 5 === 0 && k) { g.fillStyle = 'rgba(220,245,230,.35)'; g.font = '500 9px "IBM Plex Mono", monospace'; g.fillText(k / 5, 3, y - 3); }
+    }
+    // 45° and 60° guide lines, like a real cutting mat
+    g.strokeStyle = 'rgba(220,245,230,.06)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, V.ch); g.lineTo(V.ch, 0); g.moveTo(V.cw, V.ch); g.lineTo(V.cw - V.ch, 0); g.stroke();
+    return c;
+  }
+
+  // ---------- Render ----------
+  let last = performance.now();
+  function drawSrc(x, y) { try { ctx.drawImage(src.el, x, y, W0, H0); } catch (_) {} }
+  function drawPiece(p, lifted) {
+    const s = V.s;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    if (!p.g.locked) {
+      const sh = (lifted ? 7 : 2.5) / s;
+      ctx.save(); ctx.translate(sh, sh); ctx.fillStyle = lifted ? 'rgba(0,0,0,.4)' : 'rgba(0,0,0,.35)'; ctx.fill(p.path); ctx.restore();
+    }
+    ctx.save();
+    ctx.clip(p.path);
+    ctx.fillStyle = '#26332e'; ctx.fillRect(-pw, -ph, pw * 3, ph * 3);
+    drawSrc(-p.c * pw, -p.r * ph);
+    ctx.restore();
+    if (!done) {
+      ctx.lineWidth = 1 / s;
+      ctx.strokeStyle = p.g.locked ? 'rgba(0,0,0,.18)' : 'rgba(255,255,255,.4)';
+      ctx.stroke(p.path);
+    }
+    ctx.restore();
+  }
+  function render(now) {
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (!src.video && playing) { demoT += dt; drawDemo(demoT); }
+    if (running && !done) { elapsed += dt; }
+    const { dpr, s, ox, oy } = V;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (matCache) ctx.drawImage(matCache, 0, 0);
+    ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox, dpr * oy);
+    ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(0, 0, W0, H0);
+    if (ghost) { ctx.globalAlpha = 0.2; drawSrc(0, 0); ctx.globalAlpha = 1; }
+    if (!done) {
+      ctx.setLineDash([6 / s, 5 / s]); ctx.lineWidth = 1.5 / s; ctx.strokeStyle = 'rgba(255,181,71,.75)';
+      ctx.strokeRect(0, 0, W0, H0); ctx.setLineDash([]);
+    }
+    if (done) drawSrc(0, 0);  // solved: show the video whole, without seams between pieces
+    else for (const g of groups) if (g.locked) for (const p of g.pieces) drawPiece(p, false);
+    for (const g of groups) if (!g.locked) for (const p of g.pieces) drawPiece(p, drag && drag.g === g);
+    if (Math.floor(elapsed) !== lastShownSec) updateStatus();
+    requestAnimationFrame(render);
+  }
+  let lastShownSec = -1;
+
+  // ---------- Status ----------
+  const fmt = t => { t = Math.floor(t); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+  function bestKey() { return 'moving-pieces-best-' + pieces.length; }
+  function getBest() { try { const v = localStorage.getItem(bestKey()); return v ? Number(v) : null; } catch (_) { return null; } }
+  function updateStatus() {
+    lastShownSec = Math.floor(elapsed);
+    const placed = pieces.filter(p => p.g.locked).length;
+    $('sPlaced').textContent = placed;
+    $('sTime').textContent = fmt(elapsed);
+    $('sMoves').textContent = moves;
+    const b = getBest(); $('sBest').textContent = b == null ? '--:--' : fmt(b);
+  }
+  function checkWin() {
+    if (!groups.every(g => g.locked)) return;
+    done = true; running = false;
+    const prev = getBest();
+    let note = '';
+    if (prev == null || elapsed < prev) {
+      try { localStorage.setItem(bestKey(), String(Math.floor(elapsed))); } catch (_) {}
+      note = prev == null ? ' That is your first time at this size.' : ' New best, ' + fmt(prev - elapsed) + ' faster than before.';
+    }
+    $('winText').textContent = `${pieces.length} pieces in ${fmt(elapsed)} with ${moves} moves.${note}`;
+    $('win').hidden = false;
+    updateStatus();
+  }
+
+  // ---------- Input ----------
+  function toPuzzle(e) {
+    const r = cv.getBoundingClientRect();
+    return [(e.clientX - r.left - V.ox) / V.s, (e.clientY - r.top - V.oy) / V.s];
+  }
+  cv.addEventListener('pointerdown', e => {
+    if (done) return;
+    const [px, py] = toPuzzle(e);
+    for (let k = groups.length - 1; k >= 0; k--) {
+      const g = groups[k];
+      if (g.locked) continue;
+      for (const p of g.pieces) {
+        if (hitCtx.isPointInPath(p.path, px - p.x, py - p.y)) {
+          drag = { g, lx: px, ly: py, id: e.pointerId };
+          groups.splice(k, 1); groups.push(g);
+          cv.setPointerCapture(e.pointerId);
+          cv.classList.add('dragging');
+          if (!running) running = true;
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) {
+      if (!drag && !done) {
+        const [px, py] = toPuzzle(e);
+        let over = false;
+        for (let k = groups.length - 1; k >= 0 && !over; k--) {
+          if (groups[k].locked) continue;
+          for (const p of groups[k].pieces) if (hitCtx.isPointInPath(p.path, px - p.x, py - p.y)) { over = true; break; }
+        }
+        cv.style.cursor = over ? 'grab' : 'default';
+      }
+      return;
+    }
+    const [px, py] = toPuzzle(e);
+    shift(drag.g, px - drag.lx, py - drag.ly);
+    drag.lx = px; drag.ly = py;
+  });
+  function endDrag(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const g = drag.g; drag = null;
+    cv.classList.remove('dragging');
+    moves++;
+    drop(g);
+    clampGroups();
+    updateStatus();
+    checkWin();
+  }
+  cv.addEventListener('pointerup', endDrag);
+  cv.addEventListener('pointercancel', endDrag);
+
+  // ---------- Controls ----------
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.hidden = true), 4500);
+  }
+  function setPlaying(on) {
+    playing = on;
+    if (src.video) { on ? src.el.play().catch(() => {}) : src.el.pause(); }
+    $('play').textContent = on ? 'Pause' : 'Play';
+  }
+  function loadFile(f) {
+    if (!f) return;
+    if (!f.type.startsWith('video/')) { toast("That file isn't a video. Choose an MP4, WebM or MOV file."); return; }
+    const v = document.createElement('video');
+    v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
+    const url = URL.createObjectURL(f);
+    v.onloadedmetadata = () => {
+      if (!v.videoWidth) { toast("This video has no picture track. Choose a file with video in it."); return; }
+      if (src.video) src.el.pause();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = url;
+      src = { el: v, w: v.videoWidth, h: v.videoHeight, video: true, name: f.name };
+      H0 = W0 * src.h / src.w;
+      layout(); build();
+      $('sSrc').textContent = f.name;
+      $('sound').hidden = false; $('sound').textContent = 'Sound off'; $('sound').setAttribute('aria-pressed', 'false');
+      setPlaying(true);
+    };
+    v.onerror = () => { URL.revokeObjectURL(url); toast("This browser can't play that video format. Try an MP4 (H.264) or WebM file."); };
+    v.src = url;
+  }
+  $('file').addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value = ''; });
+  const board = $('board');
+  board.addEventListener('dragover', e => { e.preventDefault(); });
+  board.addEventListener('drop', e => { e.preventDefault(); loadFile(e.dataTransfer.files[0]); });
+  $('count').addEventListener('change', e => { N = Number(e.target.value); build(); });
+  $('shuffle').addEventListener('click', () => build());
+  $('again').addEventListener('click', () => build());
+  $('watch').addEventListener('click', () => { $('win').hidden = true; });
+  $('ghost').addEventListener('click', e => { ghost = !ghost; e.currentTarget.setAttribute('aria-pressed', String(ghost)); });
+  $('play').addEventListener('click', () => setPlaying(!playing));
+  $('sound').addEventListener('click', e => {
+    if (!src.video) return;
+    src.el.muted = !src.el.muted;
+    e.currentTarget.textContent = src.el.muted ? 'Sound off' : 'Sound on';
+    e.currentTarget.setAttribute('aria-pressed', String(!src.el.muted));
+    if (playing) src.el.play().catch(() => {});
+  });
+
+  function start(data) {
+    data = data || {};
+    if (data.N) { N = data.N; $('count').value = String(N); }
+    if (data.ghost) { ghost = true; $('ghost').setAttribute('aria-pressed', 'true'); }
+    layout();
+    build(data.puzzle || null);
+    new ResizeObserver(() => { layout(); clampGroups(); }).observe(cv);
+    if (document.fonts) document.fonts.ready.then(() => { matCache = drawMat(); });
+    requestAnimationFrame(t => { last = t; render(t); });
+  }
+  start({});
+})();
+</script>
+</body>
+</html>
